@@ -1,0 +1,48 @@
+{
+  "documentId": "e4340d7d6024c97acba5ed0c",
+  "outputFormat": "mujoco",
+
+  "packageName": "/models/balance_v1.1/",
+  "robotName": "balance_v1.1",
+  "assemblyName": "balance_v1",
+
+  "joint_properties": {
+    "*": {
+      "damping": 0.1,
+      "frictionloss": 0.05,
+      "actuated": false
+    },
+
+    "left_hip_joint": {
+      "actuated": true,
+      "type": "motor",
+      "forcerange": 25
+    },
+    "left_knee_joint": {
+      "actuated": true,
+      "type": "motor",
+      "forcerange": 25
+    },
+    "right_hip_joint": {
+      "actuated": true,
+      "type": "motor",
+      "forcerange": 25
+    },
+    "right_knee_joint": {
+      "actuated": true,
+      "type": "motor",
+      "forcerange": 25
+    },
+
+    "left_wheel_joint": {
+      "actuated": true,
+      "type": "motor",
+      "forcerange": 20
+    },
+    "right_wheel_joint": {
+      "actuated": true,
+      "type": "motor",
+      "forcerange": 20
+    }
+  }
+}

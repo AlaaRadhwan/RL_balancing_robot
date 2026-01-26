@@ -1,0 +1,17 @@
+__pycache__/
+*.pyc
+*.pyo
+
+venv/
+env/
+rl_env/
+
+checkkpoints/
+tensorboard/
+runs/
+*.zip
+*.pkl
+
+.mujoco/
+
+.DS_Store

@@ -1,0 +1,141 @@
+<?xml version="1.0" ?>
+<!-- Generated using onshape-to-robot -->
+<!-- Onshape document_id: e4340d7d6024c97acba5ed0c -->
+<mujoco model="balance_v1.1">
+  <compiler angle="radian" meshdir="assets" autolimits="true"/>
+  <default>
+    <default class="balance_v1.1">
+      <joint frictionloss="0.1" armature="0.005"/>
+      <position kp="50" dampratio="1"/>
+      <default class="visual">
+        <geom type="mesh" contype="0" conaffinity="0" group="2"/>
+      </default>
+      <default class="collision">
+        <geom group="3"/>
+      </default>
+    </default>
+  </default>
+  <worldbody>
+    <!-- Link base_chassis -->
+    <body name="base_chassis" pos="0 0 0.4" quat="1 0 0 0" childclass="balance_v1.1">
+      <freejoint name="base_chassis_free_joint"/>
+      <inertial pos="-0.000876166 1.80868e-17 0.07" mass="6.96621" fullinertia="0.0350809 0.0329824 0.0460841 0 0 0"/>
+      <!-- Part base_chassis -->
+      <geom type="mesh" class="visual" pos="0 1.38778e-17 0.07" quat="1 0 0 0" mesh="base_chassis" material="base_chassis_material"/>
+      <geom type="mesh" class="collision" pos="0 1.38778e-17 0.07" quat="1 0 0 0" mesh="base_chassis" material="base_chassis_material"/>
+      <!-- Link left_base_rod -->
+
+      <!-- IMU LINK -->
+      <body name="imu_link" pos="-0.000876166 1.80868e-17 0.0359">
+        <site name="imu_site" pos="0 0 0" size="0.005" rgba="1 0 0 1"/>
+      </body>
+
+      <body name="left_base_rod" pos="2.94463e-18 0.12 0.07" quat="0.707107 0.707107 -1.11022e-16 -1.03112e-17">
+        <!-- Joint from base_chassis to left_base_rod -->
+        <joint axis="0 0 -1" name="left_hip_joint" type="hinge" frictionloss="0.05" damping="0.1"/>
+        <inertial pos="6.98473e-18 -0.076487 -0.005" mass="0.061895" fullinertia="0.000146498 5.19435e-06 0.000150661 6.40253e-38 2.31366e-36 -2.88394e-20"/>
+        <!-- Part left_base_rod -->
+        <geom type="mesh" class="visual" pos="-3.08149e-33 -1.38778e-17 0.12" quat="0.707107 -0.707107 -0 -6.63716e-33" mesh="left_base_rod" material="left_base_rod_material"/>
+        <geom type="mesh" class="collision" pos="-3.08149e-33 -1.38778e-17 0.12" quat="0.707107 -0.707107 -0 -6.63716e-33" mesh="left_base_rod" material="left_base_rod_material"/>
+        <!-- Link left_knee_motor -->
+        <body name="left_knee_motor" pos="-1.07852e-32 -0.15 -1.38778e-17" quat="0 1 0 0">
+          <!-- Joint from left_base_rod to left_knee_motor -->
+          <!-- <joint axis="0 0 1" name="left_knee_motor_joint" type="hinge" frictionloss="0.05" damping="0.1"/> -->
+          <inertial pos="2.70416e-18 0 -0.00984935" mass="0.0703948" fullinertia="1.84709e-05 1.84709e-05 3.2354e-05 -2.27671e-37 -4.13111e-37 -2.75238e-21"/>
+          <!-- Part left_knee_motor -->
+          <geom type="mesh" class="visual" pos="1.54074e-33 -0.15 -0.12" quat="0.707107 0.707107 -0 2.07861e-33" mesh="left_knee_motor" material="left_knee_motor_material"/>
+          <geom type="mesh" class="collision" pos="1.54074e-33 -0.15 -0.12" quat="0.707107 0.707107 -0 2.07861e-33" mesh="left_knee_motor" material="left_knee_motor_material"/>
+          <!-- Link left_knee_rod -->
+          <body name="left_knee_rod" pos="7.70372e-34 0 -0.02" quat="1 -0 3.05311e-16 5.55112e-17">
+            <!-- Joint from left_knee_motor to left_knee_rod -->
+            <joint axis="0 0 -1" name="left_knee_joint" type="hinge" frictionloss="0.05" damping="0.1"/>
+            <inertial pos="3.69605e-19 0.0769044 -0.005" mass="0.0622485" fullinertia="0.000148404 5.20092e-06 0.000152568 6.41063e-38 -5.8041e-35 -2.9216e-20"/>
+            <!-- Part left_knee_rod -->
+            <geom type="mesh" class="visual" pos="-3.08149e-33 -0.15 -0.1" quat="0.707107 0.707107 1.11022e-16 -5.53216e-32" mesh="left_knee_rod" material="left_knee_rod_material"/>
+            <geom type="mesh" class="collision" pos="-3.08149e-33 -0.15 -0.1" quat="0.707107 0.707107 1.11022e-16 -5.53216e-32" mesh="left_knee_rod" material="left_knee_rod_material"/>
+            <!-- Link left_wheel -->
+            <body name="left_wheel" pos="-1.3552e-18 0.15 1.38778e-17" quat="7.09109e-17 0.999931 0.0117314 6.92663e-17">
+              <!-- Joint from left_knee_rod to left_wheel -->
+              <joint axis="0 0 -1" name="left_wheel_joint" frictionloss="0.05" damping="0.1"/>
+              <inertial pos="4.39509e-18 -1.11022e-16 -0.0152956" mass="0.360891" fullinertia="0.000338132 0.000338132 0.000622739 -8.13501e-22 6.20683e-37 -5.64245e-20"/>
+              <!-- Part left_wheel -->
+              <geom type="mesh" class="visual" pos="1.73472e-18 0.3 0.1" quat="0.707107 -0.707107 -0 -8.10658e-19" mesh="left_wheel" material="left_wheel_material"/>
+              <geom type="mesh" class="collision" pos="1.73472e-18 0.3 0.1" quat="0.707107 -0.707107 -0 -8.10658e-19" mesh="left_wheel" material="left_wheel_material"/>
+            </body>
+          </body>
+        </body>
+      </body>
+      <!-- Link right_base_rod -->
+      <body name="right_base_rod" pos="-1.13913e-18 -0.12 0.07" quat="0.707106 -0.707106 -0.000829542 -0.000829542">
+        <!-- Joint from base_chassis to right_base_rod -->
+        <joint axis="0 0 1" name="right_hip_joint" type="hinge" frictionloss="0.05" damping="0.1"/>
+        <inertial pos="6.97374e-18 0.076487 -0.005" mass="0.061895" fullinertia="0.000146498 5.19435e-06 0.000150661 -9.99137e-24 -7.55715e-39 2.88394e-20"/>
+        <!-- Part right_base_rod -->
+        <geom type="mesh" class="visual" pos="2.71051e-20 0 0.12" quat="0.707107 0.707107 0 1.76091e-19" mesh="right_base_rod" material="right_base_rod_material"/>
+        <geom type="mesh" class="collision" pos="2.71051e-20 0 0.12" quat="0.707107 0.707107 0 1.76091e-19" mesh="right_base_rod" material="right_base_rod_material"/>
+        <!-- Link right_knee_motor -->
+        <body name="right_knee_motor" pos="-4.60786e-19 0.15 0" quat="1.13194e-21 0.999999 0.00117315 -1.51155e-21">
+          <!-- Joint from right_base_rod to right_knee_motor -->
+          <!-- <joint axis="0 0 1" name="right_knee_motor_joint" type="hinge" frictionloss="0.05" damping="0.1"/> -->
+          <inertial pos="3.11391e-18 0 -0.00984935" mass="0.0703948" fullinertia="1.84709e-05 1.84709e-05 3.2354e-05 0 0 2.75238e-21"/>
+          <!-- Part right_knee_motor -->
+          <geom type="mesh" class="visual" pos="0 0.15 -0.12" quat="0.707107 -0.707107 0 0" mesh="right_knee_motor" material="right_knee_motor_material"/>
+          <geom type="mesh" class="collision" pos="0 0.15 -0.12" quat="0.707107 -0.707107 0 0" mesh="right_knee_motor" material="right_knee_motor_material"/>
+          <!-- Link right_knee_rod -->
+          <body name="right_knee_rod" pos="0 -1.38778e-17 -0.02" quat="1 0 0 0">
+            <!-- Joint from right_knee_motor to right_knee_rod -->
+            <joint axis="0 0 1" name="right_knee_joint" type="hinge" frictionloss="0.05" damping="0.1"/>
+            <inertial pos="1.28849e-18 -0.0769044 -0.005" mass="0.0622485" fullinertia="0.000148404 5.20092e-06 0.000152568 -2.83754e-36 -4.52076e-22 5.36605e-20"/>
+            <!-- Part right_knee_rod -->
+            <geom type="mesh" class="visual" pos="1.12757e-17 0.15 -0.1" quat="0.707107 -0.707107 0 -3.83896e-17" mesh="right_knee_rod" material="right_knee_rod_material"/>
+            <geom type="mesh" class="collision" pos="1.12757e-17 0.15 -0.1" quat="0.707107 -0.707107 0 -3.83896e-17" mesh="right_knee_rod" material="right_knee_rod_material"/>
+            <!-- Link right_wheel -->
+            <body name="right_wheel" pos="4.33681e-19 -0.15 2.77556e-17" quat="8.29376e-17 1 2.46519e-32 5.42911e-17">
+              <!-- Joint from right_knee_rod to right_wheel -->
+              <joint axis="0 0 1" name="right_wheel_joint" frictionloss="0.05" damping="0.1"/>
+              <inertial pos="1.71091e-18 5.55112e-17 -0.0152956" mass="0.360891" fullinertia="0.000338132 0.000338132 0.000622739 -7.09074e-36 -3.09033e-20 9.21526e-21"/>
+              <!-- Part right_wheel -->
+              <geom type="mesh" class="visual" pos="-1.04083e-17 -0.3 0.1" quat="0.707107 0.707107 -1.11022e-16 1.54573e-16" mesh="right_wheel" material="right_wheel_material"/>
+              <geom type="mesh" class="collision" pos="-1.04083e-17 -0.3 0.1" quat="0.707107 0.707107 -1.11022e-16 1.54573e-16" mesh="right_wheel" material="right_wheel_material"/>
+            </body>
+          </body>
+        </body>
+      </body>
+    </body>
+  </worldbody>
+  <asset>
+    <mesh file="left_knee_rod.stl"/>
+    <mesh file="right_knee_rod.stl"/>
+    <mesh file="right_wheel.stl"/>
+    <mesh file="right_base_rod.stl"/>
+    <mesh file="left_knee_motor.stl"/>
+    <mesh file="left_base_rod.stl"/>
+    <mesh file="left_wheel.stl"/>
+    <mesh file="base_chassis.stl"/>
+    <mesh file="right_knee_motor.stl"/>
+    <material name="base_chassis_material" rgba="0.439216 0.47451 0.501961 1"/>
+    <material name="left_base_rod_material" rgba="0.34902 0.376471 0.4 1"/>
+    <material name="left_knee_motor_material" rgba="0.262745 0.282353 0.301961 1"/>
+    <material name="left_knee_rod_material" rgba="0.34902 0.376471 0.4 1"/>
+    <material name="left_wheel_material" rgba="0.262745 0.282353 0.301961 1"/>
+    <material name="right_base_rod_material" rgba="0.34902 0.376471 0.4 1"/>
+    <material name="right_knee_motor_material" rgba="0.262745 0.282353 0.301961 1"/>
+    <material name="right_knee_rod_material" rgba="0.34902 0.376471 0.4 1"/>
+    <material name="right_wheel_material" rgba="0.262745 0.282353 0.301961 1"/>
+  </asset>
+  <actuator>
+    <motor name="left_hip_joint" joint="left_hip_joint" forcerange="-25 25"/>
+    <motor name="left_knee_joint" joint="left_knee_joint" forcerange="-25 25"/>
+    <motor name="left_wheel_joint" joint="left_wheel_joint" forcerange="-20 20"/>
+    <motor name="right_hip_joint" joint="right_hip_joint" forcerange="-25 25"/>
+    <motor name="right_knee_joint" joint="right_knee_joint" forcerange="-25 25"/>
+    <motor name="right_wheel_joint" joint="right_wheel_joint" forcerange="-20 20"/>
+  </actuator>
+
+  <sensor>
+    <accelerometer name="imu_acc" site="imu_site"/>
+    <gyro    name="imu_gyro" site="imu_site"/>
+  </sensor>
+
+  <equality/>
+</mujoco>
