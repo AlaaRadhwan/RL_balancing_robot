@@ -19,7 +19,7 @@ class VelocityEnv(MujocoEnv, utils.EzPickle):
         "render_fps": 50,
     }
 
-    def __init__(self, xml_file="./balance_v1.1/scene.xml", frame_skip=4, enable_disturbance=False, **kwargs):
+    def __init__(self, xml_file="./models/balance_v1/scene.xml", frame_skip=4, enable_disturbance=False, **kwargs):
         
         self.enable_disturbance = enable_disturbance
 

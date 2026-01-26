@@ -11,7 +11,7 @@ from stable_baselines3.common.monitor import Monitor
 from gymnasium.wrappers import TimeLimit
 
 # Import your corrected environment
-from envs.velocity_env_v3_2_forces import VelocityEnv
+from envs.robust_env import VelocityEnv
 
 # --------------------------------------------------
 # 0. Configuration & Hyperparameters

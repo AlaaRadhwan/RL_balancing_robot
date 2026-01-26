@@ -8,7 +8,7 @@ from gymnasium.wrappers import TimeLimit
 import mujoco
 
 # Import the correct V2 environment
-from envs.velocity_env_v3_2_forces import VelocityEnv
+from envs.robust_env import VelocityEnv
 
 # --------------------------------------------------
 # Command-line arguments
@@ -17,10 +17,17 @@ RUN_NAME = "Balance_v3.6_fcs_w"
 parser = argparse.ArgumentParser(description="Evaluate velocity-tracking policy")
 
 
+# parser.add_argument(
+#     "--ckpt",
+#     type=str,
+#     default=f"./checkpoints/{RUN_NAME}/best/best_model.zip",
+#     help="Path to model checkpoint (.zip)"
+# )
+
 parser.add_argument(
     "--ckpt",
     type=str,
-    default=f"./checkpoints/{RUN_NAME}/best/best_model.zip",
+    default=f"1_000_000",
     help="Path to model checkpoint (.zip)"
 )
 
@@ -50,7 +57,7 @@ args = parser.parse_args()
 if args.ckpt:
     TIMESTEP = int(args.ckpt)
 else:
-    TIMESTEP = 1_000_000
+    TIMESTEP = 20_600_000
 
 MODEL_PATH = (
     f"./checkpoints/{RUN_NAME}/ppo_velocity_{TIMESTEP}_steps.zip"
