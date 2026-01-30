@@ -8,7 +8,7 @@ import math
 
 DEFAULT_CAMERA_CONFIG = {
     "trackbodyid": 1,
-    "distance": 3.0,
+    "distance":  3.0,
     "lookat": np.array((0.0, 0.0, 0.5)),
     "elevation": -20.0,
 }
@@ -25,12 +25,16 @@ class VelocityEnv(MujocoEnv, utils.EzPickle):
 
         # --- Constants ---
         self.WHEEL_RADIUS = 0.06
-        self.MAX_TILT = 0.8  
+        self.MAX_TILT = 0.8
         self.v_cmd_scale = 1.5
         self.v_cmd = 0.0
 
+        # --- Yaw control parameters ---
+        self.THETA_SAFE = 0.30  # rad, balance margin
+        self.MAX_YAW_TORQUE = 3.0   # Nm, yaw authority (must be < MAX_WHEEL_TORQUE)
+        self.SIGMA_YAW = 0.3    # yaw tracking tolerance
+
         self.yaw_cmd = 0.0
-        self.yaw_cmd_scale = 2.0
         self.max_wheel_speed = 30 # rad/s
 
         self.MAX_WHEEL_TORQUE = 10.0
@@ -55,6 +59,7 @@ class VelocityEnv(MujocoEnv, utils.EzPickle):
         # --- State Estimation ---
         self.theta_est = 0.0
         self.roll_est = 0.0
+        self.yaw_est = 0.0
 
         utils.EzPickle.__init__(self, xml_file, frame_skip, enable_disturbance, **kwargs)
 
@@ -80,7 +85,7 @@ class VelocityEnv(MujocoEnv, utils.EzPickle):
         # NOTE: It's no 20 in total. last time I removed the motor actuators for hips and knees
         # obs_dim = 8 + 4 + 4 + self.n_actuators 
         obs_dim = (
-            11 +    # core body + command + wheel states
+            9 +    # core body + command + wheel states
             4 +     # joint positions
             4 +     # joint velocities
             self.n_actuators
@@ -92,6 +97,7 @@ class VelocityEnv(MujocoEnv, utils.EzPickle):
         self.imu_gyro_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_SENSOR, "imu_gyro")
         self.acc_adr = self.model.sensor_adr[self.imu_acc_id]
         self.gyro_adr = self.model.sensor_adr[self.imu_gyro_id]
+
         self.base_body_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_BODY, "base_chassis")
 
         lw = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_JOINT, "left_wheel_joint")
@@ -161,9 +167,23 @@ class VelocityEnv(MujocoEnv, utils.EzPickle):
                 self.data.xfrc_applied[self.base_body_id, :2] = 0.0
 
                         
-        # Wheels (torque)
-        self.data.ctrl[self.act_ids["left_wheel_joint"]]  = action[0] * self.MAX_WHEEL_TORQUE
-        self.data.ctrl[self.act_ids["right_wheel_joint"]] = action[1] * self.MAX_WHEEL_TORQUE
+        # --- Wheel action: common + yaw ---
+        u_common = action[0]
+        u_yaw = action[1]
+
+        tau_common = u_common * self.MAX_WHEEL_TORQUE
+        tau_yaw = u_yaw * self.MAX_YAW_TORQUE
+
+        tau_L = tau_common - tau_yaw
+        tau_R = tau_common + tau_yaw
+
+        tau_L = np.clip(tau_L, -self.MAX_WHEEL_TORQUE, self.MAX_WHEEL_TORQUE)
+        tau_R = np.clip(tau_R, -self.MAX_WHEEL_TORQUE, self.MAX_WHEEL_TORQUE)
+
+        self.data.ctrl[self.act_ids["left_wheel_joint"]] = tau_L
+        self.data.ctrl[self.act_ids["right_wheel_joint"]] = tau_R
+
+
 
         # Hips (absolute position targets)
         hip_L = self.HIP_MIN + (action[2] + 1) * 0.5 * (self.HIP_MAX - self.HIP_MIN)
@@ -198,11 +218,15 @@ class VelocityEnv(MujocoEnv, utils.EzPickle):
 
         # --- Randomize Base ---
         pitch = self.np_random.uniform(-0.2, 0.2)
-        roll = self.np_random.uniform(-0.15, 0.15)
-        yaw = 0.0
+        roll = self.np_random.uniform(-0.25, 0.25)
+        yaw = self.np_random.uniform(-0.25, 0.25)
+
         qpos[3:7] = self.euler_to_quat(roll, pitch, yaw)   
         qpos[0] += self.np_random.uniform(-0.05, 0.05)
         qpos[1] += self.np_random.uniform(-0.02, 0.02)
+        qpos[2] += self.np_random.uniform(0.0, 0.1)
+
+        qvel[3:6] += self.np_random.uniform(-0.1, 0.1, size=3)
 
         # --- Randomize Legs ---
         hip_L = self.np_random.uniform(-0.4, 0.4)
@@ -251,15 +275,14 @@ class VelocityEnv(MujocoEnv, utils.EzPickle):
         self.v_cmd = self.np_random.uniform(-1.5, 1.5)
 
         if abs(self.v_cmd) < 0.15:
-            self.v_cmd = 0.15 * np.sign(self.v_cmd) if self.v_cmd != 0 else 0.15
+            self.v_cmd = 0.25 * np.sign(self.v_cmd) if self.v_cmd != 0 else 0.25
 
-        # max_yaw = max(0.6, abs(self.v_cmd))
-        self.yaw_cmd = self.np_random.uniform(-0.8, 0.8)
+        # self.yaw_cmd = 0.0
+        self.yaw_cmd = self.np_random.uniform(-1.0, 1.0)
+        # self.yaw_cmd = np.clip(self.yaw_cmd, -np.pi, np.pi)
 
-        # Remove tiny yaw noise, but allow straight motion
-        if abs(self.yaw_cmd) < 0.2:
-            self.yaw_cmd = 0.0
 
+        
         self.disturb_steps_left = 0
 
         return self._get_obs()
@@ -293,37 +316,25 @@ class VelocityEnv(MujocoEnv, utils.EzPickle):
             + (1.0 - alpha) * self.accel_roll(ax_n, ay_n, az_n)
         )
 
-        v_norm = self.forward_velocity() / self.v_cmd_scale
-        v_cmd_norm = self.v_cmd / self.v_cmd_scale
+        q = self.data.qpos[3:7]
+        yaw = self.quat_to_yaw(q)
 
-        y_rate = self.data.sensordata[self.gyro_adr + 2] # z-axis gyro
-        
-        yaw_rate_norm = y_rate / self.yaw_cmd_scale
-        yaw_cmd_norm = self.yaw_cmd / self.yaw_cmd_scale
+        # wrap to [-pi, pi]
+        yaw = (yaw + np.pi) % (2 * np.pi) - np.pi
+        self.yaw_est = yaw
+
+        yaw_error = self.yaw_cmd - self.yaw_est
+        yaw_error = (yaw_error + np.pi) % (2 * np.pi) - np.pi
+        yaw_error_norm = yaw_error / np.pi
+
+        v_norm = self.forward_velocity() / self.v_cmd_scale
+        v_cmd_norm = self.v_cmd / self.v_cmd_scale        
 
         wl = self.data.qvel[self.lw_dof]
         wr = self.data.qvel[self.rw_dof]
 
-        wl_norm = np.clip(wl / self.max_wheel_speed, -1.5, 1.5)
-        wr_norm = np.clip(wr / self.max_wheel_speed, -1.5, 1.5)
-
-        wheel_diff_norm = np.clip((wr - wl) / self.max_wheel_speed, -1.5, 1.5)
-
-        # return np.concatenate([
-        #     np.array([
-        #         self.theta_est,
-        #         gyro[1],
-        #         self.roll_est,
-        #         gyro[0],
-        #         v_norm,
-        #         v_cmd_norm,
-        #         self.data.ctrl[self.act_ids["left_hip_pos_con"]],
-        #         self.data.ctrl[self.act_ids["right_hip_pos_con"]],
-        #         self.data.ctrl[self.act_ids["left_knee_pos_con"]],
-        #         self.data.ctrl[self.act_ids["right_knee_pos_con"]],
-        #     ], dtype=np.float64),
-        #     self.last_action
-        # ])
+        wl_norm = np.clip(wl / self.max_wheel_speed, -1.0, 1.0)
+        wr_norm = np.clip(wr / self.max_wheel_speed, -1.0, 1.0)
 
         return np.concatenate([
             np.array([
@@ -333,11 +344,9 @@ class VelocityEnv(MujocoEnv, utils.EzPickle):
                 gyro[0],
                 v_norm,
                 v_cmd_norm,
-                yaw_rate_norm,
-                yaw_cmd_norm,
+                yaw_error_norm,
                 wl_norm,
                 wr_norm,
-                wheel_diff_norm,
                 self.data.qpos[self.joint_qpos_adrs[0]],
                 self.data.qpos[self.joint_qpos_adrs[1]],
                 self.data.qpos[self.joint_qpos_adrs[2]],
@@ -376,43 +385,27 @@ class VelocityEnv(MujocoEnv, utils.EzPickle):
         velocity_weight = 2.0 + 4.0 * upright
 
 
-        yaw_rate = self.data.sensordata[self.gyro_adr + 2] # z-axis gyro
+        # --- Yaw tracking reward ---
+        yaw_error = self.yaw_cmd - self.yaw_est
+        yaw_error = (yaw_error + np.pi) % (2 * np.pi) - np.pi
+        yaw_error_norm = yaw_error / np.pi
+
+        yaw_track = np.exp(
+            -0.5 * (yaw_error_norm / self.SIGMA_YAW) ** 2
+        )
+
+        yaw_gate = np.clip(1.0 - abs(self.theta_est) / self.THETA_SAFE, 0.0, 1.0)
+        yaw_track *= yaw_gate
+
+        yaw_deadband = 0.05     # ~3 degrees
+
+        if abs(yaw_error) < yaw_deadband:
+            yaw_track = 1.0
         
-        yaw_rate_norm = yaw_rate / self.yaw_cmd_scale
-        yaw_cmd_norm = self.yaw_cmd / self.yaw_cmd_scale
-
-        yaw_error = yaw_rate_norm - yaw_cmd_norm
-
-        # yaw_scale = max(0.2, abs(self.yaw_cmd) / self.yaw_cmd_scale)
-        yaw_scale = 0.2 + 0.3 * abs(yaw_cmd_norm)
-
-        yaw_reward = np.exp(-0.5 * (yaw_error / yaw_scale)**2)
-
-        # yaw_active = np.exp(-0.3 * (yaw_cmd_norm ** 2))
-        # yaw_active = 1.0 - yaw_active
-
         # --- Wheel difference shaping for yaw
         wl = self.data.qvel[self.lw_dof]
         wr = self.data.qvel[self.rw_dof]
 
-        wheel_diff_norm = (wr - wl) / self.max_wheel_speed
-
-        # Desired wheel difference comes directly from yaw command
-        # desired_wheel_diff = yaw_cmd_norm * (self.yaw_cmd_scale / self.max_wheel_speed)
-        desired_wheel_diff = yaw_cmd_norm
-
-        wheel_diff_error = wheel_diff_norm - desired_wheel_diff
-
-        wheel_diff_reward = np.exp(-2.0 * wheel_diff_error**2)
-
-
-        # yaw_active = np.clip(abs(yaw_cmd_norm) / 0.2, 0.0, 1.0)
-        yaw_active = np.clip(abs(self.yaw_cmd) / 0.6, 0.0, 1.0)
-
-        yaw_quality = np.exp(-2.0 * yaw_error**2)
-
-        velocity_weight *= (1.0 - 0.6 * yaw_active * (1.0 - yaw_quality))
-        # velocity_weight *= (1.0 - 0.5 * yaw_active)
 
         # --------------------------------------------------
         # Fix 1: Joint symmetry penalty (STATE-based)
@@ -427,20 +420,20 @@ class VelocityEnv(MujocoEnv, utils.EzPickle):
             (q_l_knee - q_r_knee)**2
         )
 
-        sym_weight = self.W_SYM * (1.0 - yaw_active)
 
-        ctrl_cost = 0.02 * np.sum(action[:2]**2)   # wheels
-        ctrl_cost += 0.01 * np.sum(action[2:]**2)  # legs
+        # ctrl_cost = 0.02 * np.sum(action[:2]**2)   # wheels
+        # ctrl_cost += 0.01 * np.sum(action[2:]**2)  # legs
+
+        ctrl_cost = 0.02 * np.sum(action[:2]**2)
 
         smoothness_cost = 0.01 * np.sum((action - prev_action)**2)
         
-        roll_weight = 1.0 * (1.0 - 0.7 * yaw_active)
         reward = (
             3.0
 
             - 2.0 * theta**2
             - 1.2 * theta_dot ** 2
-            - roll_weight * roll ** 2
+            - 0.5 * roll ** 2
             - 0.8 * roll_dot ** 2
 
             # + 1.5 * upright_bonus
@@ -451,23 +444,7 @@ class VelocityEnv(MujocoEnv, utils.EzPickle):
             - smoothness_cost
         )
 
-        # reward -= sym_weight * sym_penalty
-
-        reward += yaw_active * (
-            3.0 * yaw_reward +
-            1.0 * wheel_diff_reward
-        )
-
-        reward -= yaw_active * (1.0 - yaw_reward)
-
-        # deleted.
-        # reward += yaw_active * 0.2 * yaw_torque_reward
-
-
-        # To avoid twitchy turning:
-        yaw_ctrl_cost = (1.0 - yaw_active) * 0.02 * (action[0] - action[1])**2
-        reward -= yaw_ctrl_cost
-
+        reward += 1.5 * yaw_track
         return reward
     
     def _check_done(self):
@@ -505,6 +482,14 @@ class VelocityEnv(MujocoEnv, utils.EzPickle):
         z = cr * cp * sy - sr * sp * cy
         return np.array([w, x, y, z])
     
+    def quat_to_yaw(self, q):
+        w, x, y, z = q
+        yaw = math.atan2(
+            2.0 * (w*z + x*y),
+            1.0 - 2.0 * (y*y + z*z)
+        )
+        return yaw
+
 
     def trigger_disturbance(self, force_xy, duration_steps):
         """
@@ -517,3 +502,4 @@ class VelocityEnv(MujocoEnv, utils.EzPickle):
             self.disturb_dir /= norm
         self.DIST_FORCE = norm
         self.disturb_steps_left = duration_steps
+

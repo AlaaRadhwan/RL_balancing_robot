@@ -9,6 +9,8 @@ from gymnasium.wrappers import TimeLimit
 
 from envs.robust_env import VelocityEnv
 
+from evdev import InputDevice, list_devices, ecodes
+import select
 
 # --------------------------------------------------
 # Command-line arguments
@@ -36,6 +38,13 @@ parser.add_argument(
     "--push",
     action="store_true",
     help="Enable external pushes"
+)
+
+parser.add_argument(
+    "--control",
+    choices=["random", "ps5"],
+    default="random",
+    help="Command source: random or PS5 controller"
 )
 
 args = parser.parse_args()
@@ -84,6 +93,48 @@ obs = env.reset()
 real_env = env.envs[0].unwrapped
 
 
+ps5 = None
+if args.control == "ps5":
+    devices = [InputDevice(path) for path in list_devices()]
+    for dev in devices:
+        if "Wireless Controller" in dev.name or "DualSense" in dev.name:
+            ps5 = dev
+            ps5.grab()
+            print(f"[INFO] Using controller: {dev.name}")
+            break
+
+    if ps5 is None:
+        raise RuntimeError("PS5 controller not found")
+
+# PS5 axis state
+lx = 0.0   # left stick horizontal
+ly = 0.0   # left stick vertical
+
+MAX_V_CMD = 1.0      # m/s (your scale)
+MAX_YAW_CMD = 1.0    # rad/s equivalent
+
+
+def read_ps5():
+    global lx, ly
+
+    if ps5 is None:
+        return
+
+    r, _, _ = select.select([ps5.fd], [], [], 0)
+    if not r:
+        return
+
+    for event in ps5.read():
+        if event.type != ecodes.EV_ABS:
+            continue
+
+        # LEFT STICK X  → yaw
+        if event.code == ecodes.ABS_RX:
+            lx = (event.value - 128) / 128.0
+
+        # LEFT STICK Y  → velocity
+        elif event.code == ecodes.ABS_Y:
+            ly = (event.value - 128) / 128.0
 # --------------------------------------------------
 # Push configuration
 # --------------------------------------------------
@@ -142,22 +193,28 @@ try:
             push_steps_left = 0
             continue
 
-        if t % CMD_INTERVAL == 0:
-            # real_env.v_cmd = np.random.uniform(-1.0, 1.0)
+        if args.control == "ps5":
+            read_ps5()
+
+            # Forward/backward on left stick Y
+            real_env.v_cmd = -ly * MAX_V_CMD
+
+            # Turn on left stick X
+            real_env.yaw_cmd = lx * MAX_YAW_CMD
+
+        else:
+            if t % CMD_INTERVAL == 0:
+                real_env.v_cmd = np.random.uniform(-1.0, 1.0)
+                real_env.yaw_cmd = np.random.uniform(-1.0, 1.0)
+
+        if abs(real_env.theta_est) > real_env.THETA_SAFE:
+            real_env.yaw_cmd = real_env.yaw_est
+
+        if abs(real_env.v_cmd) < 0.1:
             real_env.v_cmd = 0.0
 
-            if abs(real_env.v_cmd) < 0.2:
-                real_env.v_cmd = 0.2 * np.sign(real_env.v_cmd)
-
-            # real_env.yaw_cmd = np.random.uniform(-1.0, 1.0)
-            real_env.yaw_cmd = -0.5
-
-            if abs(real_env.theta_est) > real_env.THETA_SAFE:
-                real_env.yaw_cmd = real_env.yaw_est
-                        
-            print(
-                f"[NEW CMD] v_cmd={real_env.v_cmd:+.2f}, yaw_cmd={real_env.yaw_cmd:+.2f}"
-            )
+        if abs(real_env.yaw_cmd) < 0.1:
+            real_env.yaw_cmd = 0.0
         
         # Optional light diagnostics
         if t % 100 == 0:

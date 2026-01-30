@@ -16,8 +16,13 @@ from envs.robust_env import VelocityEnv
 # --------------------------------------------------
 # 0. Configuration & Hyperparameters
 # --------------------------------------------------
-RUN_NAME = "balance_env1.1_phase1"
-PREV_RUN_NAME = "balance_env1.0_phase1"
+RUN_NAME = "balance_env2.1_yaw"
+PREV_RUN_NAME = "balance_env2.1_balance"
+ckpt_name_prefix = "ppo_balance"
+
+RESUME = True
+RESUME_STEP = 1_400_000
+
 NUM_ENVS = 8  # Ryzen 7 5000 has 8+ cores. 8 is a safe sweet spot.
 SEED = 42
 
@@ -29,27 +34,27 @@ PREV_CKPT_DIR = f"./checkpoints/{PREV_RUN_NAME}"
 
 # Optimized Hyperparameters for Velocity Control (Standard RL Zoo style)
 HYPERPARAMS = {
-    "n_steps": 2048,           # Steps per environment before update
-    "batch_size": 2048,        # Larger batch size for stable gradients
+    "n_steps": 1024,           # Steps per environment before update
+    "batch_size": 512,        # Larger batch size for stable gradients
     "learning_rate": 3e-4,     # Standard stable LR
     "gamma": 0.99,             # Look ahead ~100 steps (2 seconds)
     "gae_lambda": 0.95,        # Generalized Advantage Estimation
     "clip_range": 0.2,         # PPO clipping
-    "ent_coef": 0.0,           # Let the noise come from std_init, not forced entropy
+    "ent_coef": 0.01,           # Let the noise come from std_init, not forced entropy
+    "vf_coef": 0.5,
+    "max_grad_norm": 0.5,
     "policy_kwargs": dict(
         activation_fn=nn.Tanh,
         net_arch=dict(pi=[256, 256], vf=[256, 256]), # Stronger brain
-        log_std_init=-1.5,       # Start with small exploration noise (prevent instant death)
+        log_std_init=-1.0,       # Start with small exploration noise (prevent instant death)
         ortho_init=True,       # Orthogonal initialization (standard for PPO)
     ),
 }
 
-RESUME = True
 
-RESUME_STEP = 7_200_000
 
 RESUME_MODEL_PATH = (
-    f"{PREV_CKPT_DIR}/ppo_velocity_{RESUME_STEP}_steps.zip"
+    f"{PREV_CKPT_DIR}/{ckpt_name_prefix}_{RESUME_STEP}_steps.zip"
 )
 
 RESUME_VEC_PATH = (
@@ -91,8 +96,8 @@ def make_env(rank: int, seed: int = 0):
     """
     def _init():
         # Phase 1: No disturbances, let it learn to walk first
-        env = VelocityEnv(render_mode=None, enable_disturbance=True)
-        env = TimeLimit(env, max_episode_steps=3000)
+        env = VelocityEnv(render_mode=None)
+        env = TimeLimit(env, max_episode_steps=1000)
         env = Monitor(env)  # Record stats (reward, length)
         env.reset(seed=seed + rank)
         return env
@@ -122,11 +127,11 @@ if __name__ == "__main__":
         print(f"[INFO] Loading VecNormalize from {RESUME_VEC_PATH}")
         env = VecNormalize.load(RESUME_VEC_PATH, env)
         env.training = True
-        env.norm_reward = True
+        env.norm_reward = False
     
     else:
         # Normalize Observations AND Rewards
-        env = VecNormalize(env, norm_obs=True, norm_reward=True, clip_obs=10.0, gamma=0.99)
+        env = VecNormalize(env, norm_obs=True, norm_reward=False, clip_obs=10.0, gamma=0.99)
 
     # --------------------------------------------------
     # 4. Evaluation Environment (Single Process)
@@ -147,7 +152,7 @@ if __name__ == "__main__":
         eval_env.norm_reward = False
 
     else:
-        eval_env = VecNormalize(eval_env, norm_obs=True, norm_reward=True, clip_obs=10.0, gamma=0.99)
+        eval_env = VecNormalize(eval_env, norm_obs=True, norm_reward=False, clip_obs=10.0, gamma=0.99)
         eval_env.training = False 
         eval_env.norm_reward = False
 
@@ -183,7 +188,7 @@ if __name__ == "__main__":
     checkpoint_callback = CheckpointCallback(
         save_freq=max(save_freq_steps // NUM_ENVS, 1),
         save_path=CHECKPOINT_DIR,
-        name_prefix="ppo_velocity"
+        name_prefix=ckpt_name_prefix
     )
 
     vec_norm_callback = SaveVecNormalizeCallback(
