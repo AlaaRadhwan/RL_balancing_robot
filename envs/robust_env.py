@@ -278,7 +278,7 @@ class VelocityEnv(MujocoEnv, utils.EzPickle):
             self.v_cmd = 0.25 * np.sign(self.v_cmd) if self.v_cmd != 0 else 0.25
 
         # self.yaw_cmd = 0.0
-        self.yaw_cmd = self.np_random.uniform(-1.0, 1.0)
+        self.yaw_cmd = self.np_random.uniform(-1.57, 1.57)
         # self.yaw_cmd = np.clip(self.yaw_cmd, -np.pi, np.pi)
 
 

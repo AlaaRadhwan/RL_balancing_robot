@@ -16,12 +16,12 @@ from envs.robust_env import VelocityEnv
 # --------------------------------------------------
 # 0. Configuration & Hyperparameters
 # --------------------------------------------------
-RUN_NAME = "balance_env2.1_yaw"
-PREV_RUN_NAME = "balance_env2.1_balance"
+RUN_NAME = "balance_env2.2_yaw"
+PREV_RUN_NAME = "balance_env2.1_yaw"
 ckpt_name_prefix = "ppo_balance"
 
 RESUME = True
-RESUME_STEP = 1_400_000
+RESUME_STEP = 3_800_000
 
 NUM_ENVS = 8  # Ryzen 7 5000 has 8+ cores. 8 is a safe sweet spot.
 SEED = 42

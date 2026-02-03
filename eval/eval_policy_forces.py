@@ -44,7 +44,7 @@ args = parser.parse_args()
 # --------------------------------------------------
 # Paths
 # --------------------------------------------------
-RUN_NAME = "balance_env2.1_yaw"
+RUN_NAME = "balance_env2.2_yaw"
 STEP = args.step
 ckpt_name_prefix = "ppo_balance"
 MODEL_PATH = f"./checkpoints/{RUN_NAME}/{ckpt_name_prefix}_{STEP}_steps.zip"
