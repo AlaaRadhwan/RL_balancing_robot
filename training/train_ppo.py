@@ -11,17 +11,17 @@ from stable_baselines3.common.monitor import Monitor
 from gymnasium.wrappers import TimeLimit
 
 # Import your corrected environment
-from envs.robust_env import VelocityEnv
+from envs.yawrate_env import VelocityEnv
 
 # --------------------------------------------------
 # 0. Configuration & Hyperparameters
 # --------------------------------------------------
-RUN_NAME = "balance_env2.2_yaw"
-PREV_RUN_NAME = "balance_env2.1_yaw"
+RUN_NAME = "yaw_env1.0_yawrate_cmd"
+PREV_RUN_NAME = "yaw_env1.0_balance"
 ckpt_name_prefix = "ppo_balance"
 
 RESUME = True
-RESUME_STEP = 3_800_000
+RESUME_STEP = 5_000_000
 
 NUM_ENVS = 8  # Ryzen 7 5000 has 8+ cores. 8 is a safe sweet spot.
 SEED = 42
@@ -35,12 +35,12 @@ PREV_CKPT_DIR = f"./checkpoints/{PREV_RUN_NAME}"
 # Optimized Hyperparameters for Velocity Control (Standard RL Zoo style)
 HYPERPARAMS = {
     "n_steps": 1024,           # Steps per environment before update
-    "batch_size": 512,        # Larger batch size for stable gradients
+    "batch_size": 256,        # Larger batch size for stable gradients
     "learning_rate": 3e-4,     # Standard stable LR
     "gamma": 0.99,             # Look ahead ~100 steps (2 seconds)
     "gae_lambda": 0.95,        # Generalized Advantage Estimation
     "clip_range": 0.2,         # PPO clipping
-    "ent_coef": 0.01,           # Let the noise come from std_init, not forced entropy
+    "ent_coef": 0.003,           # Let the noise come from std_init, not forced entropy
     "vf_coef": 0.5,
     "max_grad_norm": 0.5,
     "policy_kwargs": dict(

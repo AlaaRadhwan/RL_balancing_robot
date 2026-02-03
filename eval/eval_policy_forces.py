@@ -7,7 +7,7 @@ from stable_baselines3 import PPO
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 from gymnasium.wrappers import TimeLimit
 
-from envs.robust_env import VelocityEnv
+from envs.yawrate_env import VelocityEnv
 
 
 # --------------------------------------------------
@@ -44,7 +44,7 @@ args = parser.parse_args()
 # --------------------------------------------------
 # Paths
 # --------------------------------------------------
-RUN_NAME = "balance_env2.2_yaw"
+RUN_NAME = "yaw_env1.0_yawrate_cmd"
 STEP = args.step
 ckpt_name_prefix = "ppo_balance"
 MODEL_PATH = f"./checkpoints/{RUN_NAME}/{ckpt_name_prefix}_{STEP}_steps.zip"
@@ -93,7 +93,7 @@ PUSH_INTERVAL = 300        # control steps
 PUSH_DURATION = 25         # control steps
 BASE_FORCE = 5.0           # Newtons
 
-CMD_INTERVAL = 300
+CMD_INTERVAL = 600
 
 push_steps_left = 0
 push_force = np.zeros(2)
@@ -135,6 +135,9 @@ try:
         action, _ = model.predict(obs, deterministic=True)
         obs, reward, done, info = env.step(action)
 
+        acc = real_env.data.sensordata[real_env.acc_adr:real_env.acc_adr + 3]
+        gyro = real_env.data.sensordata[real_env.gyro_adr:real_env.gyro_adr + 3]
+
         if done[0]:
             print("[RESET] Episode ended")
             obs = env.reset()
@@ -143,20 +146,18 @@ try:
             continue
 
         if t % CMD_INTERVAL == 0:
-            # real_env.v_cmd = np.random.uniform(-1.0, 1.0)
-            real_env.v_cmd = 0.0
+            real_env.v_cmd = np.random.uniform(-1.0, 1.0)
+            # real_env.v_cmd = 0.0
 
             if abs(real_env.v_cmd) < 0.2:
                 real_env.v_cmd = 0.2 * np.sign(real_env.v_cmd)
 
             # real_env.yaw_cmd = np.random.uniform(-1.0, 1.0)
-            real_env.yaw_cmd = -0.5
+            # real_env.yaw_rate_cmd = -0.5
 
-            if abs(real_env.theta_est) > real_env.THETA_SAFE:
-                real_env.yaw_cmd = real_env.yaw_est
-                        
+    
             print(
-                f"[NEW CMD] v_cmd={real_env.v_cmd:+.2f}, yaw_cmd={real_env.yaw_cmd:+.2f}"
+                f"[NEW CMD] v_cmd={real_env.v_cmd:+.2f}, yaw_cmd={real_env.yaw_rate_cmd:+.2f}"
             )
         
         # Optional light diagnostics
@@ -168,7 +169,7 @@ try:
 
         print(
             f"[CMd] v_cmd: {real_env.v_cmd:+.3f},   v_f: {real_env.forward_velocity():+.3f}"
-            f"[CMD] y_cmd: {real_env.yaw_cmd:+.3f} y_e: {real_env.yaw_est:+.3f}"
+            f"[CMD] y_cmd: {real_env.yaw_rate_cmd:+.3f} y_e: {gyro[2]:+.3f}"
         )
 
         t += 1

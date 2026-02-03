@@ -7,7 +7,7 @@ from stable_baselines3 import PPO
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 from gymnasium.wrappers import TimeLimit
 
-from envs.robust_env import VelocityEnv
+from envs.yawrate_env import VelocityEnv
 
 from evdev import InputDevice, list_devices, ecodes
 import select
@@ -53,7 +53,7 @@ args = parser.parse_args()
 # --------------------------------------------------
 # Paths
 # --------------------------------------------------
-RUN_NAME = "balance_env2.1_yaw"
+RUN_NAME = "yaw_env1.0_yawrate_cmd"
 STEP = args.step
 ckpt_name_prefix = "ppo_balance"
 MODEL_PATH = f"./checkpoints/{RUN_NAME}/{ckpt_name_prefix}_{STEP}_steps.zip"
@@ -179,12 +179,17 @@ print("      Press Ctrl+C to exit\n")
 
 t = 0
 
+yaw_rate_mag = 0.7
+
 try:
     while True:
         maybe_apply_push(t)
 
         action, _ = model.predict(obs, deterministic=True)
         obs, reward, done, info = env.step(action)
+
+        acc = real_env.data.sensordata[real_env.acc_adr:real_env.acc_adr + 3]
+        gyro = real_env.data.sensordata[real_env.gyro_adr:real_env.gyro_adr + 3]
 
         if done[0]:
             print("[RESET] Episode ended")
@@ -200,7 +205,13 @@ try:
             real_env.v_cmd = -ly * MAX_V_CMD
 
             # Turn on left stick X
-            real_env.yaw_cmd = lx * MAX_YAW_CMD
+            # real_env.yaw_cmd = lx * MAX_YAW_CMD
+            # print(f"lx: {lx}")
+            if lx > 0.5:
+                real_env.yaw_rate_cmd = yaw_rate_mag * -1
+            elif lx < -0.5:
+                real_env.yaw_rate_cmd = yaw_rate_mag * 1
+
 
         else:
             if t % CMD_INTERVAL == 0:
@@ -224,8 +235,9 @@ try:
             )
 
         print(
-            f"[CMd] v_cmd: {real_env.v_cmd:+.3f},   v_f: {real_env.forward_velocity():+.3f}"
-            f"[CMD] y_cmd: {real_env.yaw_cmd:+.3f} y_e: {real_env.yaw_est:+.3f}"
+            f"[CMD] v_cmd: {real_env.v_cmd:+.3f},   v_f: {real_env.forward_velocity():+.3f}"
+            f" [CMD] y_cmd: {real_env.yaw_rate_cmd:+.3f} y_e: {gyro[2]:+.3f}"
+            f" [INFO] lx: {lx:+.3f}"
         )
 
         t += 1
